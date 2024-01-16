@@ -1,3 +1,4 @@
+using Core.Interfaces;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,9 @@ builder.Services.AddDbContext<StoreContext>(opt =>
     opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+// Si crea la repository pattern per la tabella prodotti
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -26,6 +30,23 @@ if (app.Environment.IsDevelopment())
 }
 
 /* app.UseHttpsRedirection(); -> per ora inutile */
+//aggiungiamo gestione dei services, con il metodo CreateScope riusciamo ad accedere agli scope (ambiti) creati all'inizio, i builder.services per intenderci
+using var scope = app.Services.CreateScope();
+var services = scope.ServiceProvider;
+var context = services.GetRequiredService<StoreContext>();
+var logger = services.GetRequiredService<ILogger<Program>>();
+//proviamo a creare il DB se non già creato, inserendo anche i record tramite classe StoreContextSeed
+try
+{
+    await context.Database.MigrateAsync();
+    await StoreContextSeed.SeedAsync(context);
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "errore durante creazione migration");
+}
+//fine gestione dei services
+
 
 app.MapControllers();
 

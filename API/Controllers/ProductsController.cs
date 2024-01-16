@@ -1,4 +1,5 @@
 using Core.Entities;
+using Core.Interfaces;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,12 +15,13 @@ namespace API.Controllers
         // - ctor -> crea constructor
 
         //il costruttore viene chiamato dentro Program.cs tramite builder.Services.AddDbContext<StoreContext>(opt =>...), quello tra parentesi è il context passato
-        private readonly StoreContext _context;
+        
+        private readonly IProductRepository _repo;
 
-        public ProductsController(StoreContext context)
+        public ProductsController(IProductRepository repo)
         {
-            _context = context;
-            
+            _repo = repo;
+                    
         }
 
         [HttpGet] // indica il tipo di chiamata, potranno essere HttpDelete, HttpPut,...
@@ -31,14 +33,27 @@ namespace API.Controllers
         } */
         public async Task<ActionResult<List<Product>>> GetProducts()
         {
-            var prodotti = await _context.Products.ToListAsync();
-            return prodotti;
+            var prodotti = await _repo.GetProductsAsync();
+            return Ok(prodotti);
         }
 
         [HttpGet("{id}")] // indica che nella chiamata deve essere passato un valora che verrà assegnato alla variabile id. Api controller si occupa della validazione dei dati passati... se apassata una stringa da errore ad esempio
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            return  await _context.Products.FindAsync(id);
+            return  await _repo.GetProductByIdAsync(id);
         }
+        
+        [HttpGet("brands")] //senza parentesi graffe indicare il valore dell'indidirizzo e non il nome della variabile
+        public async Task<ActionResult<IReadOnlyList<ProductBrand>>> GetProductBrands()
+        {
+            return  Ok(await _repo.GetProductBrandsAsync());
+        }
+        [HttpGet("types")] //senza parentesi graffe indicare il valore dell'indidirizzo e non il nome della variabile
+        public async Task<ActionResult<IReadOnlyList<ProductType>>> GetProductTypes()
+        {
+            return  Ok(await _repo.GetProductTypesAsync())
+            ;
+        }
+
     }
 }
