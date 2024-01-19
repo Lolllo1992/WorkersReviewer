@@ -1,5 +1,8 @@
+using API.Dtos;
+using AutoMapper;
 using Core.Entities;
 using Core.Interfaces;
+using Core.Specifications;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,12 +18,18 @@ namespace API.Controllers
         // - ctor -> crea constructor
 
         //il costruttore viene chiamato dentro Program.cs tramite builder.Services.AddDbContext<StoreContext>(opt =>...), quello tra parentesi è il context passato
-        
-        private readonly IProductRepository _repo;
+       
+        private readonly IGenericRepository<Product> _productRepo;
+        private readonly IGenericRepository<ProductBrand> _productBrandRepo;
+        private readonly IGenericRepository<ProductType> _productTypeRepo;
+        private readonly IMapper _mapper;
 
-        public ProductsController(IProductRepository repo)
+        public ProductsController(IGenericRepository<Product> productRepo , IGenericRepository<ProductBrand> productBrandRepo, IGenericRepository<ProductType> productTypeRepo, IMapper mapper)
         {
-            _repo = repo;
+            _mapper = mapper;
+            _productTypeRepo = productTypeRepo;
+            _productBrandRepo = productBrandRepo;
+            _productRepo = productRepo;
                     
         }
 
@@ -31,28 +40,48 @@ namespace API.Controllers
             var prodotti = _context.Products.ToList();
             return prodotti;
         } */
-        public async Task<ActionResult<List<Product>>> GetProducts()
+        public async Task<ActionResult<IReadOnlyList<ProductToReturnDto>>> GetProducts()
         {
-            var prodotti = await _repo.GetProductsAsync();
-            return Ok(prodotti);
+
+            var spec = new ProductsWithTypesAndBrandsSpecification();
+
+            var prodotti = await _productRepo.ListAsync(spec);
+            return Ok( _mapper.Map<IReadOnlyList<Product>, IReadOnlyList<ProductToReturnDto>>(prodotti));
         }
 
         [HttpGet("{id}")] // indica che nella chiamata deve essere passato un valora che verrà assegnato alla variabile id. Api controller si occupa della validazione dei dati passati... se apassata una stringa da errore ad esempio
-        public async Task<ActionResult<Product>> GetProduct(int id)
+        public async Task<ActionResult<ProductToReturnDto>> GetProduct(int id)
         {
-            return  await _repo.GetProductByIdAsync(id);
+            
+            var spec = new ProductsWithTypesAndBrandsSpecification(id);
+
+            var products = await _productRepo.GetEntityWithSpec(spec);
+
+            /* return  new ProductToReturnDto{
+                Id = products.Id,
+                Name = products.Name,
+                Description = products.Description,
+                Price = products.Price,
+                PictureUrl = products.PictureUrl,
+                ProductType = products.ProductType.Name,
+                ProductBrand = products.ProductBrand.Name
+
+            }; sarebbe la sintassi da scrivere senza automapper */
+
+            return _mapper.Map<Product, ProductToReturnDto>(products);
+            
         }
         
         [HttpGet("brands")] //senza parentesi graffe indicare il valore dell'indidirizzo e non il nome della variabile
         public async Task<ActionResult<IReadOnlyList<ProductBrand>>> GetProductBrands()
         {
-            return  Ok(await _repo.GetProductBrandsAsync());
+            return  Ok(await _productBrandRepo.ListAllAsync());
         }
+        
         [HttpGet("types")] //senza parentesi graffe indicare il valore dell'indidirizzo e non il nome della variabile
         public async Task<ActionResult<IReadOnlyList<ProductType>>> GetProductTypes()
         {
-            return  Ok(await _repo.GetProductTypesAsync())
-            ;
+            return  Ok(await _productTypeRepo.ListAllAsync());
         }
 
     }

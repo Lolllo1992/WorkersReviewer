@@ -19,6 +19,10 @@ builder.Services.AddDbContext<StoreContext>(opt =>
 
 // Si crea la repository pattern per la tabella prodotti
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+// Si aggiunger al builder la classe 
+builder.Services.AddScoped(typeof (IGenericRepository<>), typeof(GenericRepository<>));
+// Si aggiunger al builder la classe automapper per gestire in automatico i Dto 
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
@@ -28,6 +32,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles();//abilita l'accesso a file statici
+
+app.UseAuthorization(); // aggiunto perchè mancava
+
+app.MapControllers();
+
 
 /* app.UseHttpsRedirection(); -> per ora inutile */
 //aggiungiamo gestione dei services, con il metodo CreateScope riusciamo ad accedere agli scope (ambiti) creati all'inizio, i builder.services per intenderci
@@ -46,8 +57,5 @@ catch (Exception ex)
     logger.LogError(ex, "errore durante creazione migration");
 }
 //fine gestione dei services
-
-
-app.MapControllers();
 
 app.Run();
